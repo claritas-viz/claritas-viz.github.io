@@ -48,8 +48,6 @@ before(async () => {
     await waitForPort(PREVIEW_PORT, '127.0.0.1');
   }
   browser = await puppeteer.launch({
-    // GitHub ubuntu-24 runners restrict unprivileged user namespaces (AppArmor),
-    // which breaks Chrome's sandbox; disable it in CI only.
     args: process.env.CI ? ['--no-sandbox', '--disable-dev-shm-usage'] : [],
   });
   page = await browser.newPage();
@@ -69,17 +67,24 @@ test('page.goto succeeds', () => {
   );
 });
 
-test('has a non-empty title', async () => {
+test('identifies the Claritas product', async () => {
   const title = await page.title();
-  assert.ok(title.trim().length > 0, 'expected a non-empty <title>');
+  const brand = await page.$eval('.brand', (el) => el.textContent ?? '');
+  assert.ok(title.includes(PRODUCT_NAME), `expected title to contain ${PRODUCT_NAME}`);
+  assert.ok(brand.includes(PRODUCT_NAME), `expected brand to contain ${PRODUCT_NAME}`);
 });
 
-test(`h1 contains the product name "${PRODUCT_NAME}"`, async () => {
-  const h1Text = await page.$eval('h1', (el) => el.textContent ?? '');
-  assert.ok(h1Text.includes(PRODUCT_NAME), `expected h1 to contain "${PRODUCT_NAME}", got "${h1Text}"`);
+test('shows the analytics feature grid', async () => {
+  const count = await page.$$eval('.features article', (items) => items.length);
+  assert.ok(count >= 4, `expected at least four feature cards, got ${count}`);
 });
 
 test('page contains the GitHub org link', async () => {
   const hrefs = await page.$$eval('a', (anchors) => anchors.map((a) => a.getAttribute('href')));
   assert.ok(hrefs.includes(ORG_URL), `expected a link to ${ORG_URL}`);
+});
+
+test('integration selector is available', async () => {
+  const value = await page.$eval('[aria-label="Select client language"]', (select) => select.value);
+  assert.equal(value, 'sql');
 });

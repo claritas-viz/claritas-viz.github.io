@@ -44,6 +44,10 @@ test('same-site href/src references resolve to files in dist', () => {
   }
 });
 
-test('styles are inlined via a <style> block', () => {
-  assert.match(html, /<style[\s>]/, 'expected an inline <style> block');
+test('includes compiled styling', () => {
+  assert.match(
+    html,
+    /<style[\s>]|<link[^>]+rel="stylesheet"/,
+    'expected an inline style block or an emitted stylesheet asset',
+  );
 });
