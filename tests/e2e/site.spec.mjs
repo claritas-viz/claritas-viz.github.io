@@ -9,30 +9,31 @@ test('page loads with a successful response', async ({ page }) => {
   expect(response.status()).toBeLessThan(400);
 });
 
-test('has a non-empty <title>', async ({ page }) => {
+test('identifies the Claritas product', async ({ page }) => {
   await page.goto('/');
-  const title = await page.title();
-  expect(title.trim().length).toBeGreaterThan(0);
+  await expect(page).toHaveTitle(new RegExp(PRODUCT_NAME, 'i'));
+  await expect(page.locator('.brand')).toContainText(PRODUCT_NAME);
 });
 
-test(`h1 contains the product name "${PRODUCT_NAME}"`, async ({ page }) => {
+test('shows the analytics feature grid', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('h1')).toContainText(PRODUCT_NAME);
-});
-
-test('shows at least 4 feature cards', async ({ page }) => {
-  await page.goto('/');
-  const cards = page.locator('.card');
+  const cards = page.locator('.features article');
   expect(await cards.count()).toBeGreaterThanOrEqual(4);
   await expect(cards.first()).toBeVisible();
   await expect(cards.nth(3)).toBeVisible();
 });
 
-test('footer links to the GitHub org', async ({ page }) => {
+test('links to the GitHub organization', async ({ page }) => {
   await page.goto('/');
-  const orgLink = page.locator(`footer a[href="${ORG_URL}"]`);
-  await expect(orgLink).toHaveCount(1);
-  await expect(orgLink).toHaveAttribute('href', ORG_URL);
+  const orgLinks = page.locator(`a[href="${ORG_URL}"]`);
+  expect(await orgLinks.count()).toBeGreaterThanOrEqual(1);
+  await expect(orgLinks.first()).toHaveAttribute('href', ORG_URL);
+});
+
+test('exposes the integration language selector', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByLabel('Select client language')).toBeVisible();
+  await expect(page.getByLabel('Select client language')).toHaveValue('sql');
 });
 
 test('no console errors during load', async ({ page }) => {
