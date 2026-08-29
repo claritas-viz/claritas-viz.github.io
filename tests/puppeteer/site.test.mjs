@@ -88,3 +88,18 @@ test('integration selector is available', async () => {
   const value = await page.$eval('[aria-label="Select client language"]', (select) => select.value);
   assert.equal(value, 'sql');
 });
+
+test('language selector switches samples without console errors', async () => {
+  const errors = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error' && !/favicon/i.test(message.text())) {
+      errors.push(message.text());
+    }
+  });
+  await page.select('[aria-label="Select client language"]', 'typescript');
+  const visible = await page.$eval('[data-sample="typescript"]', (el) => el.hidden);
+  assert.equal(visible, false);
+  const filename = await page.$eval('[data-filename]', (el) => el.textContent);
+  assert.equal(filename, 'analysis.ts');
+  assert.deepEqual(errors, []);
+});
