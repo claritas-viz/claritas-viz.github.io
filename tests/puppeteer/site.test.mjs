@@ -8,7 +8,7 @@ const PRODUCT_NAME = 'Claritas';
 const ORG_URL = 'https://github.com/claritas-viz';
 
 const externalBaseUrl = process.env.E2E_BASE_URL;
-const PREVIEW_PORT = 4322;
+const PREVIEW_PORT = Number(process.env.PUPPETEER_PORT ?? 4373);
 const baseUrl = externalBaseUrl ?? `http://127.0.0.1:${PREVIEW_PORT}`;
 
 let child;

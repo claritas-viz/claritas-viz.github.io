@@ -12,3 +12,15 @@ test("homepage exposes labeled Claritas integrations", async () => {
   assert.match(component, /navigator\.clipboard/);
   assert.match(component, /prefers-reduced-motion/);
 });
+
+test("homepage exposes a sticky responsive header and separate access boundaries", async () => {
+  const page = await readFile(new URL("../src/pages/index.astro", import.meta.url), "utf8");
+  assert.match(page, /class="site-header"/);
+  assert.match(page, /position:sticky/);
+  assert.match(page, /class="mobile-nav"/);
+  for (const boundary of [
+    "https://user.claritas-viz.github.io/",
+    "https://org.claritas-viz.github.io/",
+    "https://auth.claritas-viz.github.io/",
+  ]) assert.ok(page.includes(boundary), `missing ${boundary}`);
+});
