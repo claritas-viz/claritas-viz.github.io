@@ -1,0 +1,49 @@
+name: PR site verification
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-site-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  site:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PUBLIC_CLARITAS_API_BASE_URL: https://api.example.invalid
+    steps:
+      - name: Check out the exact pull request revision
+        uses: actions/checkout@3d3c42e5aac5ed86f2b6aed7e0febac5b3c0c03e
+        with:
+          persist-credentials: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Build the reviewed Astro source
+        run: npm run build
+
+      - name: Verify rendered output
+        run: npm test
+
+      - name: Install browser runtimes
+        run: |
+          npx playwright install --with-deps chromium
+          npx puppeteer browsers install chrome
+
+      - name: Run Playwright verification
+        run: npm run test:e2e
+
+      - name: Run Puppeteer verification
+        run: npm run test:puppeteer
