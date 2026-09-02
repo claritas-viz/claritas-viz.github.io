@@ -1,0 +1,72 @@
+---
+import PublicIntakeForm from "../components/PublicIntakeForm.astro";
+import PublicIntakeLayout from "../layouts/PublicIntakeLayout.astro";
+
+const fields = [
+  {
+    name: "fullName",
+    label: "Full name",
+    required: true,
+    autocomplete: "name",
+    maxLength: 120,
+  },
+  {
+    name: "email",
+    label: "Email",
+    kind: "email",
+    required: true,
+    autocomplete: "email",
+    maxLength: 254,
+  },
+  {
+    name: "organization",
+    label: "Current organization",
+    autocomplete: "organization",
+    maxLength: 160,
+  },
+  {
+    name: "role",
+    label: "Role or application track",
+    required: true,
+    placeholder: "For example: platform engineer or design partner",
+    maxLength: 160,
+  },
+  {
+    name: "portfolioUrl",
+    label: "Portfolio or profile URL",
+    kind: "url",
+    placeholder: "https://…",
+    help: "HTTPS links only.",
+    maxLength: 500,
+  },
+  {
+    name: "experienceSummary",
+    label: "Experience and fit",
+    kind: "textarea",
+    required: true,
+    placeholder: "Summarize relevant work, outcomes, and why this Claritas track fits.",
+    help: "Do not include government identifiers, financial account details, health data, or secrets.",
+    maxLength: 6000,
+    rows: 9,
+  },
+] as const;
+---
+<PublicIntakeLayout
+  title="Submit an application"
+  description="Submit an application for a Claritas role or formal collaboration track."
+  eyebrow="Formal application"
+>
+  <div slot="heading">
+    <h1>Submit an application to work with Claritas.</h1>
+    <p class="lede">
+      Use this form for an identified role or formal collaboration track. The receipt confirms
+      delivery only; review, interviews, contracting, and selection remain separate steps.
+    </p>
+  </div>
+  <PublicIntakeForm
+    formId="application-request"
+    endpoint="/v1/intake/applications"
+    submitLabel="Submit application"
+    fields={fields}
+  />
+</PublicIntakeLayout>

@@ -1,0 +1,323 @@
+---
+type FieldKind = "text" | "email" | "url" | "textarea" | "select";
+
+interface FieldOption {
+  label: string;
+  value: string;
+}
+
+interface Field {
+  name: string;
+  label: string;
+  kind?: FieldKind;
+  required?: boolean;
+  autocomplete?: string;
+  placeholder?: string;
+  help?: string;
+  maxLength?: number;
+  rows?: number;
+  options?: FieldOption[];
+}
+
+interface Props {
+  formId: string;
+  endpoint: string;
+  submitLabel: string;
+  fields: Field[];
+}
+
+const { formId, endpoint, submitLabel, fields } = Astro.props;
+const apiBaseUrl = import.meta.env.PUBLIC_CLARITAS_API_BASE_URL ?? "";
+---
+<section class="form-shell" aria-labelledby={`${formId}-title`}>
+  <div class="form-copy">
+    <h2 id={`${formId}-title`}>Tell us what you need.</h2>
+    <p>
+      Required fields are marked with <span aria-hidden="true">*</span><span class="sr-only">an asterisk</span>.
+      We return a submission reference immediately after the API accepts the request.
+    </p>
+    <ul>
+      <li>Your browser keeps one idempotency key while retrying an unchanged submission.</li>
+      <li>Claritas does not place form content in analytics or client-side logs.</li>
+      <li>A human follow-up is separate from this technical receipt.</li>
+    </ul>
+  </div>
+
+  <form
+    id={formId}
+    data-intake-form
+    data-api-base-url={apiBaseUrl}
+    data-endpoint={endpoint}
+  >
+    <div class="field-grid">
+      {fields.map((field) => (
+        <label class:list={["field", field.kind === "textarea" && "field-wide"]}>
+          <span>
+            {field.label}
+            {field.required && <b aria-hidden="true"> *</b>}
+          </span>
+          {field.kind === "textarea" ? (
+            <textarea
+              name={field.name}
+              required={field.required}
+              autocomplete={field.autocomplete}
+              placeholder={field.placeholder}
+              maxlength={field.maxLength}
+              rows={field.rows ?? 6}
+              aria-describedby={field.help ? `${formId}-${field.name}-help` : undefined}
+            ></textarea>
+          ) : field.kind === "select" ? (
+            <select
+              name={field.name}
+              required={field.required}
+              aria-describedby={field.help ? `${formId}-${field.name}-help` : undefined}
+            >
+              <option value="">Select an option</option>
+              {field.options?.map((option) => (
+                <option value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type={field.kind ?? "text"}
+              name={field.name}
+              required={field.required}
+              autocomplete={field.autocomplete}
+              placeholder={field.placeholder}
+              maxlength={field.maxLength}
+              aria-describedby={field.help ? `${formId}-${field.name}-help` : undefined}
+            />
+          )}
+          {field.help && <small id={`${formId}-${field.name}-help`}>{field.help}</small>}
+        </label>
+      ))}
+    </div>
+
+    <label class="honeypot" aria-hidden="true">
+      Website
+      <input name="website" type="url" tabindex="-1" autocomplete="off" />
+    </label>
+
+    <label class="consent">
+      <input name="consent" type="checkbox" required />
+      <span>
+        I consent to Claritas storing this submission and using the contact details above to respond.
+        <b aria-hidden="true">*</b>
+      </span>
+    </label>
+
+    <div class="submit-row">
+      <button type="submit">{submitLabel}</button>
+      <p class="status" data-form-status role="status" aria-live="polite"></p>
+    </div>
+    <noscript>This form requires JavaScript to send JSON to the Claritas intake API.</noscript>
+  </form>
+</section>
+
+<script>
+  const forms = document.querySelectorAll('[data-intake-form]');
+
+  const newIdempotencyKey = () => {
+    if (typeof crypto.randomUUID === 'function') {
+      return `web-${crypto.randomUUID()}`;
+    }
+    const values = new Uint32Array(4);
+    crypto.getRandomValues(values);
+    return `web-${Array.from(values, (value) => value.toString(16).padStart(8, '0')).join('')}`;
+  };
+
+  for (const candidate of forms) {
+    if (!(candidate instanceof HTMLFormElement)) continue;
+
+    const form = candidate;
+    const status = form.querySelector('[data-form-status]');
+    const submitButton = form.querySelector('button[type="submit"]');
+    let lastPayload = '';
+    let idempotencyKey = '';
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!(submitButton instanceof HTMLButtonElement) || !(status instanceof HTMLElement)) return;
+      if (!form.reportValidity()) return;
+
+      const formData = new FormData(form);
+      const payload = {};
+      for (const [name, rawValue] of formData.entries()) {
+        if (name === 'consent' || typeof rawValue !== 'string') continue;
+        const value = rawValue.trim();
+        if (value || name === 'website') payload[name] = value;
+      }
+      payload.consent = formData.get('consent') === 'on';
+
+      const payloadText = JSON.stringify(payload);
+      if (payloadText !== lastPayload) {
+        idempotencyKey = newIdempotencyKey();
+        lastPayload = payloadText;
+      }
+
+      status.dataset.state = 'pending';
+      status.textContent = 'Sending…';
+      submitButton.disabled = true;
+      form.setAttribute('aria-busy', 'true');
+
+      try {
+        const apiBaseUrl = form.dataset.apiBaseUrl?.trim();
+        const endpointPath = form.dataset.endpoint;
+        if (!apiBaseUrl || !endpointPath) {
+          throw new Error('The public intake service is not configured for this build.');
+        }
+
+        const endpointUrl = new URL(endpointPath, apiBaseUrl).toString();
+        const response = await fetch(endpointUrl, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': idempotencyKey,
+          },
+          body: payloadText,
+        });
+
+        const responseBody = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const field = typeof responseBody.field === 'string' ? `${responseBody.field}: ` : '';
+          const message = typeof responseBody.message === 'string'
+            ? responseBody.message
+            : `Submission failed with status ${response.status}.`;
+          throw new Error(`${field}${message}`);
+        }
+
+        const reference = typeof responseBody.submissionId === 'string'
+          ? responseBody.submissionId
+          : 'accepted';
+        status.dataset.state = 'success';
+        status.textContent = `Submitted. Reference: ${reference}`;
+        form.reset();
+        lastPayload = '';
+        idempotencyKey = '';
+      } catch (error) {
+        status.dataset.state = 'error';
+        status.textContent = error instanceof Error
+          ? error.message
+          : 'The submission could not be sent.';
+      } finally {
+        submitButton.disabled = false;
+        form.removeAttribute('aria-busy');
+      }
+    });
+  }
+</script>
+
+<style>
+  .form-shell {
+    display: grid;
+    grid-template-columns: minmax(0, .72fr) minmax(0, 1.28fr);
+    gap: clamp(1.5rem, 5vw, 4rem);
+    align-items: start;
+  }
+  .form-copy {
+    position: sticky;
+    top: 6rem;
+    padding: 1.4rem;
+    border: 1px solid rgb(15 23 42 / 10%);
+    border-radius: 1.2rem;
+    background: rgb(255 255 255 / 70%);
+  }
+  .form-copy h2 { margin: 0 0 .5rem; font-size: 1.55rem; }
+  .form-copy p, .form-copy li { color: var(--muted); }
+  .form-copy ul { margin: 1rem 0 0; padding-left: 1.2rem; }
+
+  form {
+    padding: clamp(1.2rem, 4vw, 2.25rem);
+    border: 1px solid rgb(15 23 42 / 12%);
+    border-radius: 1.4rem;
+    background: var(--panel);
+    box-shadow: 0 24px 70px rgb(15 23 42 / 10%);
+  }
+  .field-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+  .field {
+    display: grid;
+    gap: .4rem;
+    align-content: start;
+  }
+  .field-wide { grid-column: 1 / -1; }
+  .field > span, .consent { font-weight: 760; }
+  .field b, .consent b { color: var(--danger); }
+  input, select, textarea {
+    width: 100%;
+    min-height: 3rem;
+    padding: .72rem .8rem;
+    border: 1px solid var(--border);
+    border-radius: .7rem;
+    background: white;
+    color: var(--ink);
+  }
+  textarea { min-height: 9rem; resize: vertical; }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgb(14 116 144 / 14%);
+  }
+  small { color: var(--muted); font-weight: 500; }
+
+  .honeypot {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    clip-path: inset(50%) !important;
+    white-space: nowrap !important;
+  }
+  .consent {
+    display: grid;
+    grid-template-columns: 1.25rem 1fr;
+    gap: .7rem;
+    align-items: start;
+    margin-top: 1.25rem;
+  }
+  .consent input { width: 1.15rem; min-height: 1.15rem; margin-top: .25rem; }
+  .submit-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    margin-top: 1.5rem;
+  }
+  button {
+    min-height: 3rem;
+    padding: .72rem 1.1rem;
+    border: 0;
+    border-radius: .75rem;
+    background: var(--ink);
+    color: white;
+    font-weight: 850;
+    cursor: pointer;
+  }
+  button:hover { background: var(--accent-strong); }
+  button:disabled { cursor: wait; opacity: .65; }
+  .status { min-height: 1.6em; margin: 0; font-weight: 700; }
+  .status[data-state="pending"] { color: var(--muted); }
+  .status[data-state="success"] { color: #166534; }
+  .status[data-state="error"] { color: var(--danger); }
+  noscript { display: block; margin-top: 1rem; color: var(--danger); }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media (max-width: 48rem) {
+    .form-shell { grid-template-columns: 1fr; }
+    .form-copy { position: static; }
+    .field-grid { grid-template-columns: 1fr; }
+    .field-wide { grid-column: auto; }
+  }
+</style>
