@@ -8,7 +8,7 @@ const PRODUCT_NAME = 'Claritas';
 const ORG_URL = 'https://github.com/claritas-viz';
 
 const externalBaseUrl = process.env.E2E_BASE_URL;
-const PREVIEW_PORT = 4322;
+const PREVIEW_PORT = Number(process.env.PUPPETEER_PORT ?? 4373);
 const baseUrl = externalBaseUrl ?? `http://127.0.0.1:${PREVIEW_PORT}`;
 
 let child;
@@ -87,4 +87,19 @@ test('page contains the GitHub org link', async () => {
 test('integration selector is available', async () => {
   const value = await page.$eval('[aria-label="Select client language"]', (select) => select.value);
   assert.equal(value, 'sql');
+});
+
+test('language selector switches samples without console errors', async () => {
+  const errors = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error' && !/favicon/i.test(message.text())) {
+      errors.push(message.text());
+    }
+  });
+  await page.select('[aria-label="Select client language"]', 'typescript');
+  const visible = await page.$eval('[data-sample="typescript"]', (el) => el.hidden);
+  assert.equal(visible, false);
+  const filename = await page.$eval('[data-filename]', (el) => el.textContent);
+  assert.equal(filename, 'analysis.ts');
+  assert.deepEqual(errors, []);
 });

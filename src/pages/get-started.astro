@@ -1,0 +1,109 @@
+---
+import PublicIntakeLayout from "../layouts/PublicIntakeLayout.astro";
+
+const paths = [
+  {
+    href: "/quote/",
+    label: "Request a quote",
+    eyebrow: "Project scope",
+    description: "Share an analytics, visualization, integration, or delivery need and receive a submission reference.",
+  },
+  {
+    href: "/pre-interest/",
+    label: "Register pre-interest",
+    eyebrow: "Early signal",
+    description: "Tell us about a product area, early-access need, partnership, or future collaboration without making a commitment.",
+  },
+  {
+    href: "/apply/",
+    label: "Submit an application",
+    eyebrow: "Formal track",
+    description: "Apply for an identified role or formal collaboration track and provide the information needed for review.",
+  },
+] as const;
+---
+<PublicIntakeLayout
+  title="Get started"
+  description="Choose the correct Claritas public intake path."
+  eyebrow="Choose a path"
+>
+  <div slot="heading">
+    <h1>Start at the boundary that matches your intent.</h1>
+    <p class="lede">
+      Each path creates a technical delivery receipt. A receipt is not an estimate, contract,
+      interview, acceptance, or purchase commitment.
+    </p>
+  </div>
+
+  <section class="path-grid" aria-label="Claritas intake paths">
+    {paths.map((path) => (
+      <article>
+        <p>{path.eyebrow}</p>
+        <h2>{path.label}</h2>
+        <div>{path.description}</div>
+        <a href={path.href}>Continue <span aria-hidden="true">→</span></a>
+      </article>
+    ))}
+  </section>
+
+  <aside>
+    <h2>Before submitting</h2>
+    <p>
+      Do not place passwords, API keys, private datasets, regulated records, or government
+      identifiers in these public forms. Claritas will request a controlled transfer method later
+      when sensitive material is genuinely required.
+    </p>
+  </aside>
+</PublicIntakeLayout>
+
+<style>
+  .path-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+  }
+  article {
+    display: grid;
+    min-height: 21rem;
+    padding: 1.4rem;
+    border: 1px solid rgb(15 23 42 / 12%);
+    border-radius: 1.25rem;
+    background: rgb(255 255 255 / 78%);
+    box-shadow: 0 20px 55px rgb(15 23 42 / 8%);
+  }
+  article > p {
+    margin: 0;
+    color: var(--accent-strong);
+    font: 800 .72rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  article h2 { margin: 1rem 0 .6rem; font-size: 1.55rem; line-height: 1.15; }
+  article div { color: var(--muted); }
+  article a {
+    align-self: end;
+    justify-self: start;
+    margin-top: 2rem;
+    padding: .7rem .95rem;
+    border-radius: .7rem;
+    background: var(--ink);
+    color: white;
+    font-weight: 850;
+    text-decoration: none;
+  }
+  article a:hover { background: var(--accent-strong); }
+  aside {
+    max-width: 52rem;
+    margin-top: 2rem;
+    padding: 1.25rem;
+    border-left: .3rem solid var(--accent);
+    background: rgb(255 255 255 / 62%);
+  }
+  aside h2 { margin: 0 0 .4rem; font-size: 1.2rem; }
+  aside p { margin: 0; color: var(--muted); }
+
+  @media (max-width: 48rem) {
+    .path-grid { grid-template-columns: 1fr; }
+    article { min-height: 16rem; }
+  }
+</style>

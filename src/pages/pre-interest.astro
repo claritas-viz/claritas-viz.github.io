@@ -1,0 +1,57 @@
+---
+import PublicIntakeForm from "../components/PublicIntakeForm.astro";
+import PublicIntakeLayout from "../layouts/PublicIntakeLayout.astro";
+
+const fields = [
+  {
+    name: "fullName",
+    label: "Full name",
+    required: true,
+    autocomplete: "name",
+    maxLength: 120,
+  },
+  {
+    name: "email",
+    label: "Email",
+    kind: "email",
+    required: true,
+    autocomplete: "email",
+    maxLength: 254,
+  },
+  {
+    name: "organization",
+    label: "Organization",
+    autocomplete: "organization",
+    maxLength: 160,
+  },
+  {
+    name: "interest",
+    label: "What are you interested in?",
+    kind: "textarea",
+    required: true,
+    placeholder: "Describe the product area, use case, partnership, or early-access need.",
+    help: "This is an expression of interest, not a purchase or employment commitment.",
+    maxLength: 2000,
+    rows: 7,
+  },
+] as const;
+---
+<PublicIntakeLayout
+  title="Register pre-interest"
+  description="Register interest in Claritas products, partnerships, and early access."
+  eyebrow="Early signal"
+>
+  <div slot="heading">
+    <h1>Register interest before the formal next step.</h1>
+    <p class="lede">
+      Tell us which Claritas capability or collaboration matters to you. We will use the details to
+      route a later conversation without treating this as a binding application.
+    </p>
+  </div>
+  <PublicIntakeForm
+    formId="pre-interest-request"
+    endpoint="/v1/intake/pre-interest"
+    submitLabel="Register interest"
+    fields={fields}
+  />
+</PublicIntakeLayout>

@@ -46,3 +46,43 @@ test('no console errors during load', async ({ page }) => {
   await page.goto('/', { waitUntil: 'load' });
   expect(errors).toEqual([]);
 });
+
+test('language selector switches integration samples', async ({ page }) => {
+  await page.goto('/');
+  const select = page.getByLabel('Select client language');
+  await expect(select).toHaveValue('sql');
+  await expect(page.locator('[data-sample="sql"]')).toBeVisible();
+  await select.selectOption('typescript');
+  await expect(select).toHaveValue('typescript');
+  await expect(page.locator('[data-sample="typescript"]')).toBeVisible();
+  await expect(page.locator('[data-sample="sql"]')).toBeHidden();
+  await expect(page.locator('[data-filename]')).toHaveText('analysis.ts');
+  await select.selectOption('mcp');
+  await expect(page.locator('[data-sample="mcp"]')).toBeVisible();
+  await expect(page.locator('[data-filename]')).toHaveText('mcp.json');
+});
+
+test('keyboard can move from brand into primary navigation', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.brand').focus();
+  await page.keyboard.press('Tab');
+  const href = await page.evaluate(() => document.activeElement?.getAttribute('href'));
+  expect(href).toBe('#platform');
+});
+
+test('page source stays free of React and JSX', async ({ page }) => {
+  await page.goto('/');
+  const html = await page.content();
+  expect(html.toLowerCase()).not.toContain('react');
+  expect(html).not.toContain('JSX');
+  expect(html.toLowerCase()).not.toContain('createelement');
+});
+
+test('footer links to the data viz server', async ({ page }) => {
+  await page.goto('/');
+  const link = page.getByRole('link', { name: /Data viz server/i });
+  await expect(link).toHaveAttribute(
+    'href',
+    'https://github.com/claritas-viz/data-viz-server.rs',
+  );
+});

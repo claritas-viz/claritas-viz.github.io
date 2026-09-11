@@ -31,3 +31,28 @@ grep -RInE '^(<<<<<<<|=======|>>>>>>>)' --exclude-dir=.git .
 ```
 
 If any marker or suspicious partial resolution remains, repeat semantic resolution from the top and rerun validation. A conflict is resolved only when the website is conceptually coherent and verified, not merely accepted by Git.
+## Encrypted environment (sops + age + just + nix)
+
+Secrets are committed as ciphertext only. Follow the fleet `env/enc` + `env/dec` contract:
+
+```
+env/enc/dev.env.enc     committed ciphertext (source of truth)
+env/enc/prod.env.enc    committed ciphertext (operator recipients)
+env/dec/*.env           gitignored plaintext, mode 0600, disposable
+.env                    managed symlink into env/dec/ only
+```
+
+```sh
+nix develop                 # or: direnv allow  (.envrc uses the flake)
+just env-keygen             # once per machine
+just env-decrypt            # env/enc -> env/dec
+just env-use dev            # .env -> env/dec/dev.env
+just env-run dev <cmd>      # no plaintext file
+just env-check              # fail-closed; CI runs this
+```
+
+Private age keys live only in `~/Library/Application Support/sops/age/keys.txt`
+(macOS) or `~/.config/sops/age/keys.txt` (Linux), mode 0600. `.just/env.just`
+and `.just/dotenv.py` are the shared ores-sops module — keep them byte-identical
+across the fleet; do not fork them in this repo. Never commit `.env`, `env/dec/`,
+or age private keys.
