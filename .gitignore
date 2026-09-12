@@ -27,3 +27,7 @@ env/dec/
 keys.txt
 sops-private*.txt
 # END ores-sops dotenv policy
+
+# Sanctioned scratch locations - AGENTS.md requires both, trailing-slash form
+tmp/
+temp/
