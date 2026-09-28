@@ -5,8 +5,6 @@ dist/
 .env
 test-results/
 playwright-report/
-tmp
-temp
 tmp/worktrees
 temp/worktrees
 
@@ -34,3 +32,17 @@ temp/
 
 # Machine-local agent instruction symlink (absolute path; never committed)
 .ores/
+
+# ORESoftware SOPS dotenv ignore contract (ORESoftware/.github docs/sops-environment-standard.md)
+*.env
+*/*.env
+*/**/*.env
+.env.*
+*.env.*
+!.env.example
+
+/env/dec/
+
+/env/enc/*
+!/env/enc/dev.env.enc
+!/env/enc/prod.env.enc
